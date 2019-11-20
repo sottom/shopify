@@ -7,7 +7,6 @@ class AuthClient(object):
     def __init__(self, **kwargs):
         self.state
         self.shop
-        self.timestamp # don't need?
         self.hmac
         self.api_key = app.config['SHOPIFY_KEY']
         self.api_secret = app.config['SHOPIFY_SECRET']

@@ -167,7 +167,6 @@ def home():
 @blueprint.route(f"{PREFIX}/auth")
 def auth():
     shop = request.args.get('shop')
-    timestamp = request.args.get('timestamp')
     hmac = request.args.get('hmac')
     get_auth_client()
 
@@ -185,7 +184,6 @@ def callback():
 
     code = request.args.get('code')
     hmac = request.args.get('hmac')
-    timestamp = request.args.get('timestamp')
     state = request.args.get('state')
     shop = request.args.get('shop')
     args_no_hmac = ""
