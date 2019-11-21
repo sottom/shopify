@@ -42,6 +42,5 @@ class Production(Config):
 
 
 class Ngrok(Development):
-    # This changes every time you start ngrok
-    ngrok_subdomain = '6a47948e'
-    SHOPIFY_REDIRECT_URI = f"https://{ngrok_subdomain}.ngrok.io{Config.API_URL_PREFIX}/callback"
+    HOST = "nerevu.ngrok.io"
+    SHOPIFY_REDIRECT_URI = f"https://nerevu.ngrok.io{Config.API_URL_PREFIX}/callback"

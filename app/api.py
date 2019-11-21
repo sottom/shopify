@@ -7,6 +7,7 @@
 """
 import re
 import os
+import json
 
 from flask import Blueprint
 from flask import current_app as app
@@ -18,7 +19,8 @@ from config import Config
 import hmac as hm
 import hashlib
 
-from auth_client import get_auth_client
+# TODO: why do I get an error when doing 'auth_client' without the '.'?
+from .auth_client import get_auth_client
 
 blueprint = Blueprint("API", __name__)
 PREFIX = Config.API_URL_PREFIX
@@ -168,58 +170,26 @@ def home():
 def auth():
     shop = request.args.get('shop')
     hmac = request.args.get('hmac')
-    get_auth_client()
+    auth_client = get_auth_client("SHOPIFY", shop=shop, hmac=hmac)
+    auth_client.check_hmac(request.args)
 
-    api_key = app.config['SHOPIFY_KEY']
-    scope = ",".join(app.config['SHOPIFY_SCOPES'])
-    redirect_uri = app.config['SHOPIFY_REDIRECT_URI']
-    nonce = get_nonce()
-    url = f"https://{shop}/admin/oauth/authorize?client_id={api_key}&scope={scope}&redirect_uri={redirect_uri}&state={nonce}"
-    return redirect(url)
+    return redirect(auth_client.authorization_url())
 
 
 @blueprint.route(f"{PREFIX}/callback")
 def callback():
-    secret = app.config['SHOPIFY_SECRET']
-
     code = request.args.get('code')
     hmac = request.args.get('hmac')
     state = request.args.get('state')
     shop = request.args.get('shop')
-    args_no_hmac = ""
-    for key, val in request.args.items():
-        if key != 'hmac':
-            args_no_hmac += f"{key}={val}&"
-    args_no_hmac = args_no_hmac[:-1]
 
-    # CHECKS
-    #######################################################
-    # The nonce is the same one that your app provided to Shopify during step two.
-    # The hmac is valid. The HMAC is signed by Shopify as explained below, in Verification.
-    # The hostname parameter is a valid hostname, ends with myshopify.com, and does not contain characters other than letters (a-z), numbers (0-9), dots, and hyphens.
-    # You can use a regular expression like the following example to confirm that the hostname is valid:
-        # /(https|http)\:\/\/[a-zA-Z0-9][a-zA-Z0-9\-]*\.myshopify\.com[\/]?/
-    if state is not nonce:
-        # fail
+    # shop and hmac need to be saved in the cache or something
+    client = get_auth_client("SHOPIFY", hmac=hmac, shop=shop)
+    if not all([client.check_state(state), client.check_hmac(request.args)]):
+        raise Exception('not all tests passed')
         pass
 
-    signature = hm.new(bytes(secret , 'latin-1'), msg = bytes(args_no_hmac , 'latin-1'), digestmod = hashlib.sha256).hexdigest()
-    print(signature)
-    print(hmac)
-    print(signature == hmac)
-    #######################################################
+    client.code = code
+    client.fetch_token()
 
-    data = {
-        'client_id': app.config['SHOPIFY_KEY'],
-        'client_secret': secret,
-        'code': code,
-    }
-    r = requests.post(f"https://{shop}/admin/oauth/access_token", data=data)
-    response = r.json()
-
-    access_token = response['access_token']
-    scope = response['scope']
-    # expires_in = response["expires_in"]
-    # associated_user_scope = response["associated_user_scope"]
-    # associated_user = response["associated_user"]
-    # X-Shopify-Access-Token: {access_token} in header to make requests
+    return json.dumps(client.token)
