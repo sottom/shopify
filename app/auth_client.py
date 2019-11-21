@@ -1,5 +1,4 @@
-from flask import current_app as app
-from flask import g, request
+from flask import g, request, current_app as app
 from os import urandom
 import hmac as hm
 import hashlib
@@ -98,8 +97,8 @@ def get_auth_client(prefix, **kwargs):
 
     if auth_client_name not in g:
         client = MyAuthClient(
-            hmac=kwargs.get('hmac'),
-            shop=kwargs.get('shop'),
+            shop=request.args.get('shop'),
+            hmac=request.args.get('hmac')
         )
         setattr(g, auth_client_name, client)
 
